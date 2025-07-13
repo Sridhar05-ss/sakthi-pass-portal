@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { format } from "date-fns";
-import { CalendarIcon, Clock, Home, User, GraduationCap } from "lucide-react";
+import { CalendarIcon, Clock, Home, User, GraduationCap, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -14,11 +14,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import ApprovalWorkflow, { ApprovalStatus } from "./ApprovalWorkflow";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   department: z.string().min(1, "Please select a department"),
   year: z.string().min(1, "Please select a year"),
+  parentPhone: z.string().min(10, "Please enter a valid 10-digit phone number").max(10, "Phone number should be 10 digits"),
   departureTime: z.date({
     required_error: "Please select departure time",
   }),
@@ -33,6 +35,8 @@ type FormData = z.infer<typeof formSchema>;
 const HomeVisitForm = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [approvalStatus, setApprovalStatus] = useState<ApprovalStatus>("pending");
+  const [submittedData, setSubmittedData] = useState<FormData | null>(null);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -40,6 +44,7 @@ const HomeVisitForm = () => {
       name: "",
       department: "",
       year: "",
+      parentPhone: "",
       reason: "",
     },
   });
@@ -68,6 +73,9 @@ const HomeVisitForm = () => {
         timestamp: new Date().toISOString(),
         status: "pending"
       });
+
+      setSubmittedData(data);
+      setApprovalStatus("pending");
 
       toast({
         title: "Home Visit Pass Submitted!",
@@ -171,6 +179,28 @@ const HomeVisitForm = () => {
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="parentPhone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    Parent/Guardian Contact Number
+                  </FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Enter 10-digit mobile number" 
+                      type="tel"
+                      maxLength={10}
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
@@ -286,6 +316,16 @@ const HomeVisitForm = () => {
             </Button>
           </form>
         </Form>
+
+        {submittedData && (
+          <ApprovalWorkflow
+            passType="home_visit"
+            currentStatus={approvalStatus}
+            onStatusChange={setApprovalStatus}
+            studentName={submittedData.name}
+            parentNumber={submittedData.parentPhone}
+          />
+        )}
       </CardContent>
     </Card>
   );
