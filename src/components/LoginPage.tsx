@@ -67,7 +67,7 @@ const LoginPage = () => {
         {/* College Header */}
         <div className="text-center mb-8">
           <img 
-            src="/lovable-uploads/48bed132-7397-4f22-be13-c4807abbdbe9.png" 
+            src="/lovable-uploads/college_logo.png" 
             alt="SSEC Logo" 
             className="h-20 w-auto mx-auto mb-4"
           />

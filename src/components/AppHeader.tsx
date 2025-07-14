@@ -32,7 +32,7 @@ const AppHeader = () => {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
               <img 
-                src="/lovable-uploads/48bed132-7397-4f22-be13-c4807abbdbe9.png" 
+                src="/lovable-uploads/college_logo.png" 
                 alt="SSEC Logo" 
                 className="h-16 w-auto"
               />
