@@ -9,6 +9,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const formSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -22,6 +23,7 @@ const LoginPage = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -43,6 +45,7 @@ const LoginPage = () => {
           title: "Login Successful",
           description: "Welcome to SSEC Pass Portal!",
         });
+        navigate("/dashboard");
       } else {
         toast({
           title: "Login Failed",

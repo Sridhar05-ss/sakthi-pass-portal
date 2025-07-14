@@ -24,9 +24,7 @@ const formSchema = z.object({
   departureTime: z.date({
     required_error: "Please select departure time",
   }),
-  arrivalTime: z.date({
-    required_error: "Please select arrival time",
-  }),
+  arrivalTime: z.string().min(1, "Please enter expected arrival time"),
   reason: z.string().min(5, "Reason must be at least 5 characters"),
 });
 
@@ -50,13 +48,14 @@ const OutingPassForm = () => {
   });
 
   const departments = [
-    "Computer Science Engineering",
-    "Electronics and Communication Engineering", 
-    "Mechanical Engineering",
-    "Civil Engineering",
-    "Electrical and Electronics Engineering",
-    "Information Technology",
-    "Electronics and Instrumentation Engineering"
+    "AIML",
+    "CYBER",
+    "IT",
+    "AIDSCSE",
+    "ECE",
+    "EEE",
+    "MECH",
+    "CIVIL"
   ];
 
   const years = ["I", "II", "III", "IV"];
@@ -135,7 +134,7 @@ const OutingPassForm = () => {
                       <GraduationCap className="h-4 w-4" />
                       Department
                     </FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} searchable>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select department" />
@@ -253,36 +252,9 @@ const OutingPassForm = () => {
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Expected Arrival Time</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className={cn(
-                              "pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            {field.value ? (
-                              format(field.value, "PPP 'at' p")
-                            ) : (
-                              <span>Pick arrival time</span>
-                            )}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          disabled={(date) => date < new Date()}
-                          initialFocus
-                          className="pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <FormControl>
+                      <Input placeholder="Enter expected arrival time" {...field} />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

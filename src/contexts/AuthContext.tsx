@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 
 export type UserRole = "student" | "warden" | "hod";
 
@@ -27,14 +27,24 @@ const demoCredentials = {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
 
+  // Restore user from localStorage on mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem("ssec_user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
+
   const login = (username: string, password: string): boolean => {
     const creds = demoCredentials[username as keyof typeof demoCredentials];
     if (creds && creds.password === password) {
-      setUser({
+      const userObj = {
         username,
         role: creds.role,
         name: creds.name,
-      });
+      };
+      setUser(userObj);
+      localStorage.setItem("ssec_user", JSON.stringify(userObj));
       return true;
     }
     return false;
@@ -42,6 +52,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem("ssec_user");
   };
 
   const isAuthenticated = !!user;

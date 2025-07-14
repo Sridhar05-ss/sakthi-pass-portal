@@ -13,11 +13,14 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import React from "react";
 
 const formSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
   registerNumber: z.string().min(5, "Please enter a valid register number"),
   department: z.string().min(1, "Please select a department"),
+  year: z.string().min(1, "Please select a year"),
   dateOfHomeVisit: z.date({
     required_error: "Please select date of home visit",
   }),
@@ -27,6 +30,7 @@ const formSchema = z.object({
     required_error: "Please select expected arrival date",
   }),
   numberOfDaysLeave: z.string().min(1, "Please enter number of days"),
+  noOfWorkingDays: z.string().min(1, "Please enter number of working days"),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -37,6 +41,8 @@ interface StudentHomeVisitFormProps {
 
 const StudentHomeVisitForm = ({ onSubmit }: StudentHomeVisitFormProps) => {
   const { toast } = useToast();
+  const [attendance, setAttendance] = useState<string>("");
+  const [canSubmit, setCanSubmit] = useState(true);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -44,21 +50,42 @@ const StudentHomeVisitForm = ({ onSubmit }: StudentHomeVisitFormProps) => {
       fullName: "",
       registerNumber: "",
       department: "",
+      year: "",
       mobileNumber: "",
       reasonForHomeVisit: "",
       numberOfDaysLeave: "",
+      noOfWorkingDays: "",
     },
   });
 
+  // Watch for changes to working days and leave days
+  const noOfWorkingDays = form.watch("noOfWorkingDays");
+  const numberOfDaysLeave = form.watch("numberOfDaysLeave");
+  React.useEffect(() => {
+    const working = parseFloat(noOfWorkingDays);
+    const leave = parseFloat(numberOfDaysLeave);
+    if (!isNaN(working) && !isNaN(leave) && working > 0 && leave >= 0 && leave <= working) {
+      const percent = ((working - leave) / working) * 100;
+      setAttendance(percent.toFixed(2) + "%");
+      setCanSubmit(percent >= 75);
+    } else {
+      setAttendance("");
+      setCanSubmit(true);
+    }
+  }, [noOfWorkingDays, numberOfDaysLeave]);
+
   const departments = [
-    "Computer Science Engineering",
-    "Electronics and Communication Engineering", 
-    "Mechanical Engineering",
-    "Civil Engineering",
-    "Electrical and Electronics Engineering",
-    "Information Technology",
-    "Electronics and Instrumentation Engineering"
+    "AIML",
+    "CYBER",
+    "IT",
+    "AIDS",
+    "CSE",
+    "ECE",
+    "EEE",
+    "MECH",
+    "CIVIL"
   ];
+  const years = ["I", "II", "III", "IV"];
 
   const handleSubmit = async (data: FormData) => {
     try {
@@ -119,7 +146,7 @@ const StudentHomeVisitForm = ({ onSubmit }: StudentHomeVisitFormProps) => {
                     Register Number
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter your register number (e.g., CSE19001)" {...field} />
+                    <Input placeholder="Enter your register number" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -145,6 +172,30 @@ const StudentHomeVisitForm = ({ onSubmit }: StudentHomeVisitFormProps) => {
                       {departments.map((dept) => (
                         <SelectItem key={dept} value={dept}>
                           {dept}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="year"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Year</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select year" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {years.map((year) => (
+                        <SelectItem key={year} value={year}>
+                          {year} Year
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -285,7 +336,7 @@ const StudentHomeVisitForm = ({ onSubmit }: StudentHomeVisitFormProps) => {
                 name="numberOfDaysLeave"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Number of Days Leave</FormLabel>
+                    <FormLabel>Number of Days Leave so far</FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="Enter number of days" 
@@ -298,7 +349,31 @@ const StudentHomeVisitForm = ({ onSubmit }: StudentHomeVisitFormProps) => {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="noOfWorkingDays"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>No of Working Days</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter no of working days" 
+                        type="number"
+                        min="1"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
+
+            {attendance && (
+              <div className="mt-2 text-sm font-medium text-blue-700">
+                Attendance Percentage: {attendance}
+              </div>
+            )}
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="font-medium text-blue-900 mb-2">Approval Process:</h4>
@@ -313,6 +388,7 @@ const StudentHomeVisitForm = ({ onSubmit }: StudentHomeVisitFormProps) => {
             <Button 
               type="submit" 
               className="w-full bg-primary hover:bg-primary/90"
+              disabled={!canSubmit}
             >
               Submit Home Visit Request
             </Button>

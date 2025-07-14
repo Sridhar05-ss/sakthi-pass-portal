@@ -30,21 +30,20 @@ const AppHeader = () => {
       <div className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <img 
-                src="/lovable-uploads/college_logo.png" 
-                alt="SSEC Logo" 
-                className="h-16 w-auto"
-              />
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">SSEC PASS PORTAL</h1>
-                <p className="text-sm text-primary-foreground/80">
-                  Sree Sakthi Engineering College
-                </p>
-              </div>
-            </div>
+            <img 
+              src="/lovable-uploads/college_logo.png" 
+              alt="SSEC Logo" 
+              className="h-16 w-auto"
+            />
           </div>
-          
+          <div className="flex-1 flex flex-col items-center text-center">
+            <center>
+            <h1 className="text-3xl font-bold tracking-tight">SSEC PASS PORTAL</h1>
+            <p className="text-sm text-primary-foreground/80">
+              Sree Sakthi Engineering College
+            </p>
+            </center>
+          </div>  
           <div className="flex items-center gap-3">
             <Badge variant="secondary" className="bg-primary-foreground/20 text-primary-foreground border-0">
               <Shield className="h-3 w-3 mr-1" />

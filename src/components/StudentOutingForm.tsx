@@ -22,9 +22,7 @@ const formSchema = z.object({
     required_error: "Please select date of outing",
   }),
   reasonForOuting: z.string().min(5, "Reason must be at least 5 characters"),
-  expectedArrivalTime: z.date({
-    required_error: "Please select expected arrival time",
-  }),
+  expectedArrivalTime: z.string().optional(),
   mobileNumber: z.string().min(10, "Please enter a valid 10-digit phone number").max(10, "Phone number should be 10 digits").optional(),
 });
 
@@ -49,13 +47,15 @@ const StudentOutingForm = ({ onSubmit }: StudentOutingFormProps) => {
   });
 
   const departments = [
-    "Computer Science Engineering",
-    "Electronics and Communication Engineering", 
-    "Mechanical Engineering",
-    "Civil Engineering",
-    "Electrical and Electronics Engineering",
-    "Information Technology",
-    "Electronics and Instrumentation Engineering"
+    "AIML",
+    "CYBER",
+    "IT",
+    "AIDS",
+    "CSE",
+    "ECE",
+    "EEE",
+    "MECH",
+    "CIVIL"
   ];
 
   const years = ["I", "II", "III", "IV"];
@@ -232,36 +232,9 @@ const StudentOutingForm = ({ onSubmit }: StudentOutingFormProps) => {
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>Expected Arrival Time</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? (
-                            format(field.value, "PPP 'at' p")
-                          ) : (
-                            <span>Pick expected arrival time</span>
-                          )}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={field.value}
-                        onSelect={field.onChange}
-                        disabled={(date) => date < new Date()}
-                        initialFocus
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
+                  <FormControl>
+                    <Input placeholder="Enter expected arrival time" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
