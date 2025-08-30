@@ -21,6 +21,8 @@ const formSchema = z.object({
   department: z.string().min(1, "Please select a department"),
   year: z.string().min(1, "Please select a year"),
   parentPhone: z.string().min(10, "Please enter a valid 10-digit phone number").max(10, "Phone number should be 10 digits"),
+  roomNumber: z.string()
+    .regex(/^\d{3}$/, "Room number must be exactly 3 digits"),
   departureTime: z.date({
     required_error: "Please select departure time",
   }),
@@ -201,6 +203,23 @@ const HomeVisitForm = () => {
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="roomNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Room Number
+                  </FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter your room number" maxLength={3} inputMode="numeric" pattern="[0-9]{3}" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -208,7 +227,7 @@ const HomeVisitForm = () => {
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
+                      <Clock className="h-5 w-5" />
                       Departure Time
                     </FormLabel>
                     <Popover>
@@ -222,9 +241,9 @@ const HomeVisitForm = () => {
                             )}
                           >
                             {field.value ? (
-                              format(field.value, "PPP 'at' p")
+                              format(field.value, "PPP")
                             ) : (
-                              <span>Pick departure time</span>
+                              <span>Pick departure date</span>
                             )}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
@@ -235,7 +254,11 @@ const HomeVisitForm = () => {
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) => date < new Date()}
+                          disabled={(date) => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            return date < today;
+                          }}
                           initialFocus
                           className="pointer-events-auto"
                         />

@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 import React from "react";
 
@@ -31,30 +32,41 @@ const formSchema = z.object({
   }),
   numberOfDaysLeave: z.string().min(1, "Please enter number of days"),
   noOfWorkingDays: z.string().min(1, "Please enter number of working days"),
+  block: z.string().min(1, "Please select a block"),
+  roomNumber: z.string()
+    .regex(/^\d{3}$/, "Room number must be exactly 3 digits"),
 });
 
-type FormData = z.infer<typeof formSchema>;
+export type FormData = z.infer<typeof formSchema>;
 
 interface StudentHomeVisitFormProps {
   onSubmit: (data: FormData) => void;
+  isSubmitting?: boolean;
 }
 
-const StudentHomeVisitForm = ({ onSubmit }: StudentHomeVisitFormProps) => {
+const StudentHomeVisitForm = ({ onSubmit, isSubmitting: externalIsSubmitting }: StudentHomeVisitFormProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [attendance, setAttendance] = useState<string>("");
   const [canSubmit, setCanSubmit] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Use external submission state if provided, otherwise use internal state
+  const finalIsSubmitting = externalIsSubmitting !== undefined ? externalIsSubmitting : isSubmitting;
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: "",
-      registerNumber: "",
-      department: "",
+      fullName: user?.first_name || "",
+      registerNumber: user?.username || "",
+      department: user?.department || "",
       year: "",
       mobileNumber: "",
       reasonForHomeVisit: "",
       numberOfDaysLeave: "",
       noOfWorkingDays: "",
+      block: "",
+      roomNumber: "",
     },
   });
 
@@ -86,22 +98,53 @@ const StudentHomeVisitForm = ({ onSubmit }: StudentHomeVisitFormProps) => {
     "CIVIL"
   ];
   const years = ["I", "II", "III", "IV"];
+  const blocks = ["A(Boys)", "B(Boys)", "G(Girls)"];
 
   const handleSubmit = async (data: FormData) => {
+    // Prevent multiple submissions
+    if (finalIsSubmitting) {
+      console.log("⚠️ Home visit submission already in progress, ignoring duplicate request");
+      toast({
+        title: "Please wait",
+        description: "Your home visit request is already being submitted...",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Only set internal state if not using external state
+    if (externalIsSubmitting === undefined) {
+      setIsSubmitting(true);
+    }
+    
     try {
       console.log("Home Visit Request Data:", data);
-      onSubmit(data);
+      
+      // Call the onSubmit function
+      await onSubmit(data);
       
       toast({
         title: "Home Visit Request Submitted!",
         description: "Your home visit request has been submitted to the HOD for initial approval.",
       });
+      
+      // Reset form after successful submission
+      form.reset();
+      
     } catch (error) {
+      console.error("Error submitting home visit request:", error);
       toast({
         title: "Error",
         description: "Failed to submit home visit request. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      // Re-enable button after a delay to prevent rapid clicking (only if using internal state)
+      if (externalIsSubmitting === undefined) {
+        setTimeout(() => {
+          setIsSubmitting(false);
+        }, 3000); // 3 second delay to prevent rapid resubmission
+      }
     }
   };
 
@@ -129,7 +172,7 @@ const StudentHomeVisitForm = ({ onSubmit }: StudentHomeVisitFormProps) => {
                     Full Name
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter your full name" {...field} />
+                    <Input placeholder="Enter your full name" {...field} readOnly />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -146,7 +189,7 @@ const StudentHomeVisitForm = ({ onSubmit }: StudentHomeVisitFormProps) => {
                     Register Number
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter your register number" {...field} />
+                    <Input placeholder="Enter your register number" {...field} readOnly />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -162,20 +205,9 @@ const StudentHomeVisitForm = ({ onSubmit }: StudentHomeVisitFormProps) => {
                     <GraduationCap className="h-4 w-4" />
                     Department
                   </FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select department" />
-                      </SelectTrigger>
+                    <Input placeholder="Department" {...field} readOnly />
                     </FormControl>
-                    <SelectContent>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
@@ -211,7 +243,7 @@ const StudentHomeVisitForm = ({ onSubmit }: StudentHomeVisitFormProps) => {
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel className="flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
+                    <CalendarIcon className="h-4 w-4" />
                     Date of Home Visit
                   </FormLabel>
                   <Popover>
@@ -238,7 +270,11 @@ const StudentHomeVisitForm = ({ onSubmit }: StudentHomeVisitFormProps) => {
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
-                        disabled={(date) => date < new Date()}
+                        disabled={(date) => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          return date < today;
+                        }}
                         initialFocus
                         className="pointer-events-auto"
                       />
@@ -248,6 +284,53 @@ const StudentHomeVisitForm = ({ onSubmit }: StudentHomeVisitFormProps) => {
                 </FormItem>
               )}
             />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="block"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Block
+                    </FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select block" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {blocks.map((block) => (
+                          <SelectItem key={block} value={block}>
+                            Block {block}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="roomNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Room Number
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter your room number" maxLength={3} inputMode="numeric" pattern="[0-9]{3}" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
@@ -388,9 +471,16 @@ const StudentHomeVisitForm = ({ onSubmit }: StudentHomeVisitFormProps) => {
             <Button 
               type="submit" 
               className="w-full bg-primary hover:bg-primary/90"
-              disabled={!canSubmit}
+              disabled={!canSubmit || finalIsSubmitting}
             >
-              Submit Home Visit Request
+              {finalIsSubmitting ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Submitting...
+                </div>
+              ) : (
+                "Submit Home Visit Request"
+              )}
             </Button>
           </form>
         </Form>

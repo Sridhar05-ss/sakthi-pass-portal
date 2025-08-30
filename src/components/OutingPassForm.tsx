@@ -134,7 +134,7 @@ const OutingPassForm = () => {
                       <GraduationCap className="h-4 w-4" />
                       Department
                     </FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} searchable>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select department" />
@@ -222,9 +222,9 @@ const OutingPassForm = () => {
                             )}
                           >
                             {field.value ? (
-                              format(field.value, "PPP 'at' p")
+                              format(field.value, "PPP")
                             ) : (
-                              <span>Pick departure time</span>
+                              <span>Pick departure date</span>
                             )}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
@@ -235,7 +235,7 @@ const OutingPassForm = () => {
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) => date < new Date()}
+                          disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
                           initialFocus
                           className="pointer-events-auto"
                         />

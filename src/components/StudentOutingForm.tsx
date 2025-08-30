@@ -13,6 +13,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect, useState } from "react";
 
 const formSchema = z.object({
   fullName: z.string().min(2, "Full name must be at least 2 characters"),
@@ -24,27 +26,64 @@ const formSchema = z.object({
   reasonForOuting: z.string().min(5, "Reason must be at least 5 characters"),
   expectedArrivalTime: z.string().optional(),
   mobileNumber: z.string().min(10, "Please enter a valid 10-digit phone number").max(10, "Phone number should be 10 digits").optional(),
+  parentMobileNumber: z.string().min(10, "Please enter a valid 10-digit parent mobile number").max(10, "Phone number should be 10 digits"),
+  block: z.string().min(1, "Please select a block"),
+  roomNumber: z.string()
+    .regex(/^\d{3}$/, "Room number must be exactly 3 digits"),
 });
 
-type FormData = z.infer<typeof formSchema>;
+export type FormData = z.infer<typeof formSchema>;
 
 interface StudentOutingFormProps {
-  onSubmit: (data: FormData) => void;
+  onSubmit: (data: z.infer<typeof formSchema>) => void;
+  isSubmitting?: boolean;
 }
 
-const StudentOutingForm = ({ onSubmit }: StudentOutingFormProps) => {
+const StudentOutingForm = ({ onSubmit, isSubmitting: externalIsSubmitting }: StudentOutingFormProps) => {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Use external submission state if provided, otherwise use internal state
+  const finalIsSubmitting = externalIsSubmitting !== undefined ? externalIsSubmitting : isSubmitting;
 
-  const form = useForm<FormData>({
+  // Debug logging to see what's in the user object
+  console.log("StudentOutingForm - User object:", user);
+  console.log("StudentOutingForm - parentsMobileNumber:", user?.parentsMobileNumber);
+
+  const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: "",
-      department: "",
+      fullName: user?.first_name || "",
+      department: user?.department || "",
       yearOfStudy: "",
+      dateOfOuting: undefined,
       reasonForOuting: "",
+      expectedArrivalTime: "",
       mobileNumber: "",
+      parentMobileNumber: String(user?.parentsMobileNumber || ""),
+      block: "",
+      roomNumber: "",
     },
   });
+
+  // Reset form when user data changes to ensure proper pre-filling
+  useEffect(() => {
+    if (user) {
+      form.reset({
+        fullName: user.first_name || "",
+        department: user.department || "",
+        yearOfStudy: "",
+        dateOfOuting: undefined,
+        reasonForOuting: "",
+        expectedArrivalTime: "",
+        mobileNumber: "",
+        parentMobileNumber: String(user.parentsMobileNumber || ""),
+        block: "",
+        roomNumber: "",
+      });
+    }
+  }, [user, form]);
 
   const departments = [
     "AIML",
@@ -59,22 +98,53 @@ const StudentOutingForm = ({ onSubmit }: StudentOutingFormProps) => {
   ];
 
   const years = ["I", "II", "III", "IV"];
+  const blocks = ["A(Boys)", "B(Boys)", "G(Girls)"];
 
-  const handleSubmit = async (data: FormData) => {
+  const handleSubmit = async (data: z.infer<typeof formSchema>) => {
+    // Prevent multiple submissions
+    if (finalIsSubmitting) {
+      console.log("⚠️ Submission already in progress, ignoring duplicate request");
+      toast({
+        title: "Please wait",
+        description: "Your request is already being submitted...",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Only set internal state if not using external state
+    if (externalIsSubmitting === undefined) {
+      setIsSubmitting(true);
+    }
+    
     try {
       console.log("Outing Request Data:", data);
-      onSubmit(data);
+      
+      // Call the onSubmit function
+      await onSubmit(data);
       
       toast({
         title: "Outing Request Submitted!",
         description: "Your outing request has been submitted to the Warden for approval.",
       });
+      
+      // Reset form after successful submission
+      form.reset();
+      
     } catch (error) {
+      console.error("Error submitting outing request:", error);
       toast({
         title: "Error",
         description: "Failed to submit outing request. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      // Re-enable button after a delay to prevent rapid clicking (only if using internal state)
+      if (externalIsSubmitting === undefined) {
+        setTimeout(() => {
+          setIsSubmitting(false);
+        }, 3000); // 3 second delay to prevent rapid resubmission
+      }
     }
   };
 
@@ -102,7 +172,7 @@ const StudentOutingForm = ({ onSubmit }: StudentOutingFormProps) => {
                     Full Name
                   </FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter your full name" {...field} />
+                    <Input placeholder="Enter your full name" {...field} readOnly />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -119,20 +189,9 @@ const StudentOutingForm = ({ onSubmit }: StudentOutingFormProps) => {
                       <GraduationCap className="h-4 w-4" />
                       Department
                     </FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select department" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {departments.map((dept) => (
-                          <SelectItem key={dept} value={dept}>
-                            {dept}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Input placeholder="Department" {...field} readOnly />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -168,9 +227,9 @@ const StudentOutingForm = ({ onSubmit }: StudentOutingFormProps) => {
               control={form.control}
               name="dateOfOuting"
               render={({ field }) => (
-                <FormItem className="flex flex-col">
+                <FormItem>
                   <FormLabel className="flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
+                    <CalendarIcon className="h-4 w-4" />
                     Date of Outing
                   </FormLabel>
                   <Popover>
@@ -197,7 +256,7 @@ const StudentOutingForm = ({ onSubmit }: StudentOutingFormProps) => {
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
-                        disabled={(date) => date < new Date()}
+                        disabled={(date) => date < new Date(new Date().setHours(0,0,0,0))}
                         initialFocus
                         className="pointer-events-auto"
                       />
@@ -207,6 +266,53 @@ const StudentOutingForm = ({ onSubmit }: StudentOutingFormProps) => {
                 </FormItem>
               )}
             />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="block"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Block
+                    </FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select block" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {blocks.map((block) => (
+                          <SelectItem key={block} value={block}>
+                            Block {block}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="roomNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      Room Number
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter your room number" maxLength={3} inputMode="numeric" pattern="[0-9]{3}" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}
@@ -233,7 +339,7 @@ const StudentOutingForm = ({ onSubmit }: StudentOutingFormProps) => {
                 <FormItem className="flex flex-col">
                   <FormLabel>Expected Arrival Time</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter expected arrival time" {...field} />
+                    <Input type="text" placeholder="Enter expected arrival time" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -247,14 +353,38 @@ const StudentOutingForm = ({ onSubmit }: StudentOutingFormProps) => {
                 <FormItem>
                   <FormLabel className="flex items-center gap-2">
                     <Phone className="h-4 w-4" />
-                    Mobile Number (Optional)
+                    Student's Mobile Number
                   </FormLabel>
                   <FormControl>
                     <Input 
-                      placeholder="Enter 10-digit mobile number" 
+                      placeholder="Enter 10-digit student's mobile number" 
                       type="tel"
                       maxLength={10}
                       {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+                
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="parentMobileNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <Phone className="h-4 w-4" />
+                    Parent's Mobile Number
+                  </FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Enter 10-digit parent's mobile number" 
+                      type="tel"
+                      maxLength={10}
+                      {...field} 
+                      readOnly
                     />
                   </FormControl>
                   <FormMessage />
@@ -265,8 +395,16 @@ const StudentOutingForm = ({ onSubmit }: StudentOutingFormProps) => {
             <Button 
               type="submit" 
               className="w-full bg-primary hover:bg-primary/90"
+              disabled={finalIsSubmitting}
             >
-              Submit Outing Request
+              {finalIsSubmitting ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Submitting...
+                </div>
+              ) : (
+                "Submit Outing Request"
+              )}
             </Button>
           </form>
         </Form>

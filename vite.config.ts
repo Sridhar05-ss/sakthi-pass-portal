@@ -19,4 +19,13 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    include: ['firebase/app', 'firebase/database', 'firebase/analytics'],
+  },
+  build: {
+    sourcemap: true,
+    commonjsOptions: {
+      include: [/node_modules/],
+    },
+  },
 }));
